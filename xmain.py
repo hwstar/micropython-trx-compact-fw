@@ -12,6 +12,9 @@ import lib.encoder_knob as knob
 import lib.si5351 as clkgen
 import lib.vfo as vfo
 
+##################################
+# Constants used in this module  #
+##################################
 
 
 SS_IDLE = 0
@@ -119,9 +122,9 @@ class SwitchPoll:
         self.sequencer_state = new_state # Set the new state for next time
                 
                       
-######################
-# Class definitions  #
-######################   
+#########################
+# Class instantiations  #
+#########################   
 
 g.cal = ConfigRw()
 switch_poller = SwitchPoll()
