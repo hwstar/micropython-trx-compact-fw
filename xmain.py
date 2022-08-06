@@ -11,6 +11,7 @@ import lib.gpio_lcd as lcd
 import lib.encoder_knob as knob
 import lib.si5351 as clkgen
 import lib.vfo as vfo
+import lib.display as display
 
 ##################################
 # Constants used in this module  #
@@ -146,6 +147,7 @@ g.cal = ConfigRw()
 switch_poller = SwitchPoll()
 g.event = ev.Event()
 g.vfo = vfo.Vfo()
+g.display = display.Display()
 
 
 ##############################
@@ -265,8 +267,14 @@ g.knob = knob.EncoderKnob(0, g.encoder_q, pins.encoder_i)
 
 
 #
+# Initialize the display
+#
+g.display.init()
+
+#
 # Initialize the VFO
 #
+
 g.vfo.init({"40M":{"low_limit":7125000, "high_limit":7300000}})
         
 

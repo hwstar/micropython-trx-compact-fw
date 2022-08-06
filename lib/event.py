@@ -24,8 +24,11 @@ EST_TUNE_PRESSED = 6
 EST_TUNE_RELEASED = 7
 EST_PTT_PRESSED = 8
 EST_PTT_RELEASED = 9
-EST_TX_TIMED_OUT_ENTRY=10
-EST_TX_TIMED_OUT_EXIT=11
+EST_TX_TIMED_OUT_ENTRY = 10
+EST_TX_TIMED_OUT_EXIT = 11
+EST_DISPLAY_UPDATE_FREQ = 12
+EST_DISPLAY_UPDATE_MODE = 13
+EST_DISPLAY_UPDATE_TXSTATE = 14
 
 # Protected class to keep track of subscriber info
 class _EventSubscriber:
@@ -36,9 +39,10 @@ class _EventSubscriber:
 # Event opject. The publisher creates one of these for every new event
 
 class EventData:
-    def __init__(self, event_type: int, event_subtype: int = 0):
+    def __init__(self, event_type: int, event_subtype: int = 0, data: dict = None):
         self.type = event_type
         self.subtype = event_subtype
+        self.data = data
 
 # This class handles subscriber additions and message publication
 
