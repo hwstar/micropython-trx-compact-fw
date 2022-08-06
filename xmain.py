@@ -21,9 +21,11 @@ SS_IDLE = 0
 SS_PTT_KEY_WAIT = 1
 SS_KEYED = 2
 SS_UNMUTE_WAIT = 3
+SS_TIMED_OUT = 4
 
 PTT_DELAY_TIME = 250
-KNOB_LONG_PRESS_TIME = 1000
+KNOB_LONG_PRESS_TIME = 1000 # 
+TX_TIME_OUT_TIME = 600000 # 10 minute TOT
 
 ########################################
 # Classes for use by this module only  #
@@ -90,14 +92,14 @@ class SwitchPoll:
         #
         
         now = time.ticks_ms()
-        new_state = SS_IDLE
+        new_state = self.sequencer_state # Assume we stay in the same state
         
         if self.sequencer_state == SS_IDLE:
             if cur_ptt_state or cur_tune_state:
                 pins.ctrl_mute_out(True) # Immediately mute the audio
                 self.sequencer_future_ticks = time.ticks_add(now, PTT_DELAY_TIME)
-                self.sequencer_state = SS_PTT_KEY_WAIT
-        elif self.sequencer_state == SS_PTT_KEY_WAIT:
+                new_state = SS_PTT_KEY_WAIT
+        elif self.sequencer_state == SS_PTT_KEY_WAIT:    
             if not (cur_ptt_state or cur_tune_state):
                 pins.ctrl_mute_out(False) # User unkeyed during mute time
                 new_state = SS_IDLE
@@ -108,17 +110,31 @@ class SwitchPoll:
                 elif cur_ptt_state:
                     pins.ctrl_ptt_out(True) # User wants to talk
                     pins.ctrl_tune_out(False)
+                self.sequencer_future_ticks = time.ticks_add(now, TX_TIME_OUT_TIME)
                 new_state = SS_KEYED
         elif self.sequencer_state == SS_KEYED:
-             if not (cur_ptt_state or cur_tune_state):
+            if not (cur_ptt_state or cur_tune_state):
                 self.sequencer_future_ticks = time.ticks_add(now, PTT_DELAY_TIME)
                 pins.ctrl_ptt_out(False) # User wants to unkey
                 pins.ctrl_tune_out(False)
                 new_state = SS_UNMUTE_WAIT
-        elif self.sequencer_state == SS_UNMUTE_WAIT:
+            elif time.ticks_diff(now, self.sequencer_future_ticks) >= 0: # Test for tx time out
+                pins.ctrl_ptt_out(False)
+                pins.ctrl_tune_out(False)
+                pins.ctrl_mute_out(False)
+                new_state = SS_TIMED_OUT
+                event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_TX_TIMED_OUT_ENTRY)
+                g.event.publish(event_data)
+        elif self.sequencer_state == SS_UNMUTE_WAIT: # Wait the unmute time
             if time.ticks_diff(now, self.sequencer_future_ticks) >= 0:
                 pins.ctrl_mute_out(False) # Unmute the audio
-        
+                new_state = SS_IDLE
+        elif self.sequencer_state == SS_TIMED_OUT: # Timed out, wait in this state until the user unkeys
+            if not (cur_ptt_state or cur_tune_state):
+                event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_TX_TIMED_OUT_EXIT)
+                new_state = SS_IDLE
+                g.event.publish(event_data)
+                
         self.sequencer_state = new_state # Set the new state for next time
                 
                       

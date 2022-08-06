@@ -13,7 +13,6 @@ ET_VFO = const(0x00000004)
 ET_DISPLAY = const(0x00000008)
 
 
-
 # Event subtypes
 EST_NONE = 0
 EST_KNOB_CW = 1
@@ -25,8 +24,8 @@ EST_TUNE_PRESSED = 6
 EST_TUNE_RELEASED = 7
 EST_PTT_PRESSED = 8
 EST_PTT_RELEASED = 9
-EST_DISPLAY_UPDATE=10
-
+EST_TX_TIMED_OUT_ENTRY=10
+EST_TX_TIMED_OUT_EXIT=11
 
 # Protected class to keep track of subscriber info
 class _EventSubscriber:
