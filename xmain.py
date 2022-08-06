@@ -13,24 +13,14 @@ import lib.si5351 as clkgen
 import lib.vfo as vfo
 
 
-##############
-# Constants  #
-##############
-
-
-#
-# PTT Sequencer states
-#
 
 SS_IDLE = 0
 SS_PTT_KEY_WAIT = 1
 SS_KEYED = 2
 SS_UNMUTE_WAIT = 3
 
-# Time intervals
-
-PTT_DELAY_TIME = 250  # Time between audio mute and ptt lines being changed
-KNOB_LONG_PRESS_TIME = 1000 # Time used to detect a long knob press
+PTT_DELAY_TIME = 250
+KNOB_LONG_PRESS_TIME = 1000
 
 ########################################
 # Classes for use by this module only  #
@@ -97,13 +87,13 @@ class SwitchPoll:
         #
         
         now = time.ticks_ms()
-        new_state = self.sequencer_state # Assume we stay in the current state
+        new_state = SS_IDLE
         
         if self.sequencer_state == SS_IDLE:
             if cur_ptt_state or cur_tune_state:
                 pins.ctrl_mute_out(True) # Immediately mute the audio
                 self.sequencer_future_ticks = time.ticks_add(now, PTT_DELAY_TIME)
-                new_state = SS_PTT_KEY_WAIT
+                self.sequencer_state = SS_PTT_KEY_WAIT
         elif self.sequencer_state == SS_PTT_KEY_WAIT:
             if not (cur_ptt_state or cur_tune_state):
                 pins.ctrl_mute_out(False) # User unkeyed during mute time
@@ -116,25 +106,22 @@ class SwitchPoll:
                     pins.ctrl_ptt_out(True) # User wants to talk
                     pins.ctrl_tune_out(False)
                 new_state = SS_KEYED
-                
         elif self.sequencer_state == SS_KEYED:
-            if not (cur_ptt_state or cur_tune_state):
+             if not (cur_ptt_state or cur_tune_state):
                 self.sequencer_future_ticks = time.ticks_add(now, PTT_DELAY_TIME)
                 pins.ctrl_ptt_out(False) # User wants to unkey
                 pins.ctrl_tune_out(False)
                 new_state = SS_UNMUTE_WAIT
-        
         elif self.sequencer_state == SS_UNMUTE_WAIT:
             if time.ticks_diff(now, self.sequencer_future_ticks) >= 0:
                 pins.ctrl_mute_out(False) # Unmute the audio
-                new_state = SS_IDLE
         
         self.sequencer_state = new_state # Set the new state for next time
                 
                       
-#########################
-# Class instantiations  #
-#########################   
+######################
+# Class definitions  #
+######################   
 
 g.cal = ConfigRw()
 switch_poller = SwitchPoll()
