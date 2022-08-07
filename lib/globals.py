@@ -12,6 +12,7 @@ i2c = None # I2C communication object
 si5351 = None # Programable clock oscillator
 event = None # Event subsystem
 vfo = None # VFO subsystem
+menu = None # Menu subsystem
 
 # Global variables
 cal_data = None

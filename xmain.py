@@ -10,6 +10,7 @@ import lib.constants as c
 import lib.gpiopins as pins
 import lib.gpio_lcd as lcd
 import lib.encoder_knob as knob
+import lib.menu as menu
 import lib.si5351 as clkgen
 import lib.vfo as vfo
 import lib.display as display
@@ -171,6 +172,7 @@ switch_poller = SwitchPoll()
 g.event = ev.Event()
 g.vfo = vfo.Vfo()
 g.display = display.Display()
+g.menu = menu.Menu()
 
 
 ##############################
@@ -305,7 +307,12 @@ g.display.init()
 #
 
 g.vfo.init(g.band_table, g.init_freq, c.TXM_LSB)
-        
+
+#
+# Initialize the menu system
+#
+
+g.menu.init()
 
 #
 # Main loop
@@ -317,9 +324,13 @@ while True:
     try:
         direction = g.encoder_q.pop()
         if direction < 0:
-            event_data = ev.EventData(ev.ET_ENCODER, ev.EST_KNOB_CCW)
+            # Divert to menu system if it is active
+            subtype = ev.EST_KNOB_MENU_CCW if g.menu.active() else ev.EST_KNOB_CCW
+            event_data = ev.EventData(ev.ET_ENCODER, subtype)
         else:
-            event_data = ev.EventData(ev.ET_ENCODER, ev.EST_KNOB_CW)
+            # Divert to menu system if it is active
+            subtype = ev.EST_KNOB_MENU_CW if g.menu.active() else ev.EST_KNOB_CW
+            event_data = ev.EventData(ev.ET_ENCODER, subtype)
         g.event.publish(event_data)
                 
     except IndexError:

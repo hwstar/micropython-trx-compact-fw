@@ -48,6 +48,9 @@ class Vfo:
             self.mode = mode
             g.event.publish(event_data)
             
+    def _set_agc_disable(disable = False):
+        pins.ctrl_agc_disable(disable)
+
 
     # Initialize the VFO 
     def init(self, band_table, tuned_freq: int = 7200000, mode: int = c.TXM_LSB):
@@ -55,6 +58,7 @@ class Vfo:
         self.band = "40M"
         self.tuned_freq = tuned_freq
         self.mode = -1
+        self.agc_disable = False
         self.txstate = -1
         self.tuning_increment_index = 2 # Start at 1 KHz
         
@@ -80,6 +84,7 @@ class Vfo:
         # Set up the clock generator output frequencies and enable the outputs
         self._set_freq(self.tuned_freq, c.TXS_RX, mode)
         
+        # Set the default tuning increment
         event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
         g.event.publish(event_data)
         
@@ -127,8 +132,28 @@ class Vfo:
             if self.tuning_increment_index >= len(g.tuning_increment_table):
                 self.tuning_increment_index = 0
             new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
-                   
-        
+        # Test for AGC disable message
+        elif event_data.subtype == ev.EST_VFO_AGC_DISABLE:
+            self._agc_disable(True)
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC_DISABLE,{"agcd": 1})
+                                          
+        # Test for AGC enable message
+        elif event_data.subtype == ev.EST_VFO_AGC_ENABLE:
+            self._agc_disable(False)
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC_DISABLE,{"agcd": 0})
+            
+        # Test for mode LSB message
+        elif event_data.subtype == ev.EST_VFO_MODE_LSB:
+            self.mode = c.TXM_LSB
+            self._set_freq(self.tuned_freq, self.txstate, self.mode)
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_MODE,{"mode": 1})
+                                          
+        # Test for mode USB message
+        elif event_data.subtype == ev.EST_VFO_MODE_USB:
+            self.mode = c.TXM_USB
+            self._set_freq(self.tuned_freq, self.txstate, self.mode)
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_MODE,{"mode": 0})
+            
         if new_event_data:
             g.event.publish(new_event_data)  
         
