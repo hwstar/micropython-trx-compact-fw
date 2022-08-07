@@ -34,32 +34,44 @@ class _DisplayBase:
             tx_str = "??"
         return tx_str
     
-        
+    def format_tuning_incr(self, tuning_incr: int) -> str:
+        kHz = tuning_incr // 1000
+        if kHz:
+            return "{:2d}k".format(kHz)
+        else:
+            return "{:3d}".format(tuning_incr)
+            
 class Display(_DisplayBase):
     def init(self):
         super().init()
-        self.freq = 0
-        self.mode = ""
-        self.tx_state = ""
         g.event.add_subscriber(self.action, ev.ET_DISPLAY)
+        
+        
+    def virt_moveto_write(self, x, y, text, screen = 0):
+        g.lcd.move_to(x, y)
+        g.lcd.putstr(text)
+       
         
     # Display events are sent to this function
     def action(self, event_data):
         # Frequency update
-    
         if event_data.subtype == ev.EST_DISPLAY_UPDATE_FREQ:
-            self.freq = event_data.data["freq"] # Save a local copy to restore later if need be
-            g.lcd.move_to(0,0)
-            g.lcd.putstr(self.format_freq(self.freq))
+            freq = event_data.data["freq"] # Save a local copy to restore later if need be
+            self.virt_moveto_write(0, 0, self.format_freq(freq))
+       
         # Mode update
         elif event_data.subtype == ev.EST_DISPLAY_UPDATE_MODE:
-            self.mode = self.format_mode(event_data.data["mode"]) # Convert sideband to string and store locally
-            g.lcd.move_to(13,0)
-            g.lcd.putstr(self.mode)
+            mode = self.format_mode(event_data.data["mode"]) # Convert sideband to string and store locally
+            self.virt_moveto_write(13, 0, mode)
+        # TX State update
         elif event_data.subtype == ev.EST_DISPLAY_UPDATE_TXSTATE: # Convert TX state to string
-            self.tx_state = self.format_tx_state(event_data.data["txstate"])
-            g.lcd.move_to(10,0)
-            g.lcd.putstr(self.tx_state)
+            tx_state = self.format_tx_state(event_data.data["txstate"])
+            self.virt_moveto_write(10, 0, tx_state)
+        # Tuning increment update
+        elif event_data.subtype == ev.EST_DISPLAY_UPDATE_TUNING_INCR:
+            tuning_incr = self.format_tuning_incr(event_data.data["incr"])
+            self.virt_moveto_write(13, 1, tuning_incr)
+          
             
             
             

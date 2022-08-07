@@ -56,7 +56,7 @@ class Vfo:
         self.tuned_freq = tuned_freq
         self.mode = -1
         self.txstate = -1
-        self.tuning_increment = 1000
+        self.tuning_increment_index = 2 # Start at 1 KHz
         
         # Set up SI5351
         g.si5351.init(clkgen.CRYSTAL_LOAD_0PF, g.cal_data["xtal_freq_hz"], g.cal_data["si5351_correction_ppb"])
@@ -79,6 +79,9 @@ class Vfo:
         
         # Set up the clock generator output frequencies and enable the outputs
         self._set_freq(self.tuned_freq, c.TXS_RX, mode)
+        
+        event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
+        g.event.publish(event_data)
         
         
     # This is called when the encoder knob is turned, or any switch is pressed or released   
@@ -108,15 +111,23 @@ class Vfo:
             new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
         # Test for knob advance CW
         elif event_data.subtype == ev.EST_KNOB_CW:
-            new_tuned_freq = self.tuned_freq + self.tuning_increment
+            new_tuned_freq = self.tuned_freq + g.tuning_increment_table[self.tuning_increment_index]
             if new_tuned_freq < self.band_table[self.band]["high_limit"]:
                 self.tuned_freq = new_tuned_freq
                 self._set_freq(self.tuned_freq, self.txstate, self.mode)
+        # Test for knob advance CCW        
         elif event_data.subtype == ev.EST_KNOB_CCW:
-            new_tuned_freq = self.tuned_freq - self.tuning_increment
+            new_tuned_freq = self.tuned_freq - g.tuning_increment_table[self.tuning_increment_index]
             if new_tuned_freq > self.band_table[self.band]["low_limit"]:
                 self.tuned_freq = new_tuned_freq
                 self._set_freq(self.tuned_freq, self.txstate, self.mode)
+        # Test for knob short press
+        elif event_data.subtype == ev.EST_KNOB_RELEASED:
+            self.tuning_increment_index += 1
+            if self.tuning_increment_index >= len(g.tuning_increment_table):
+                self.tuning_increment_index = 0
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
+                   
         
         if new_event_data:
             g.event.publish(new_event_data)  

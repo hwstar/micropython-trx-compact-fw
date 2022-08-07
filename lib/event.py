@@ -29,6 +29,7 @@ EST_TX_TIMED_OUT_EXIT = 11
 EST_DISPLAY_UPDATE_FREQ = 12
 EST_DISPLAY_UPDATE_MODE = 13
 EST_DISPLAY_UPDATE_TXSTATE = 14
+EST_DISPLAY_UPDATE_TUNING_INCR = 15
 
 # Protected class to keep track of subscriber info
 class _EventSubscriber:

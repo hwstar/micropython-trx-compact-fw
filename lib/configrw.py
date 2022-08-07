@@ -17,7 +17,10 @@ class ConfigRw:
 
         except OSError as e:
             if e.errno == errno.ENOENT:
-                self.write(path, default_init)        
+                if update:
+                    self.write(path, default_init)
+                else:
+                    return default_init
             else:
                 raise
 

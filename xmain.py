@@ -92,7 +92,7 @@ class SwitchPoll:
                 q.heappush(self.switch_q, event_data)
             else:
                 # Determine if the knob was pressed for the long period and send the correct event subtype
-                if time.ticks_diff(time.ticks_ms, self.knob_pressed_time) >= c.KNOB_LONG_PRESS_TIME:
+                if time.ticks_diff(time.ticks_ms(), self.knob_pressed_time) >= c.KNOB_LONG_PRESS_TIME:
                     ev_subtype = ev.EST_KNOB_RELEASED_LONG
                 else:
                     ev_subtype = ev.EST_KNOB_RELEASED
@@ -166,7 +166,7 @@ class SwitchPoll:
 # Class instantiations  #
 #########################   
 
-g.cal = ConfigRw()
+g.configrw = ConfigRw()
 switch_poller = SwitchPoll()
 g.event = ev.Event()
 g.vfo = vfo.Vfo()
@@ -227,7 +227,13 @@ pins.ctrl_led = Pin(25, Pin.OUT)
 #
 
 
-g.cal_data = g.cal.read(g.cal_file_dir, g.cal_defaults)
+g.cal_data = g.configrw.read(g.cal_file_path, g.cal_defaults)
+
+#
+# Read in the band table
+#
+
+g.band_table = g.configrw.read(g.band_table_path, g.band_table_default, False)
 
 #
 # Set default output state for control pins
