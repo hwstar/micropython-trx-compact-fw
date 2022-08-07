@@ -32,7 +32,7 @@ SS_TIMED_OUT = 4
 ########################################
 
 #
-# This class sets up a timer interrupt, and uses it to poll the front panel switches
+# This class sets up a timer interrupt, and uses it to poll the front panel switches and PTT
 #
 
 
@@ -42,42 +42,54 @@ class SwitchPoll:
         self.last_ptt_state = False
         self.last_knob_state = False
         self.sequencer_state = SS_IDLE
+        self.switch_q = list()
         self.sequencer_future_ticks = 0
         self.switch_timer = Timer()
         self.switch_timer.init(period=10, callback=self._interrupt_switch_timer)
-        
+    
+    
+    # This interrupt fires every 10mS.
+    # We can't do much in the interrupt context
+    # so we call micropython schedule to run the
+    # switch service method and return from the interrupt.
+    
     def _interrupt_switch_timer(self, timer_obj):
         micropython.schedule(self._switch_service, None)
     
+    # Switch service. This is called shortly after each 10mS interrupt
+    # The code here should not post events, and should queue them instead
+    # So that they can be handled in the main loop using the queue_service() method.
+    
     def _switch_service(self, dummy):
+        # Sample the inputs
         cur_ptt_state = not pins.ctrl_button_ptt()
         cur_tune_state = not pins.ctrl_button_tune()
         cur_knob_state = not pins.ctrl_button_knob()
-        # TUNE switch
+        # TUNE switch handler
         if self.last_tune_state != cur_tune_state:
             self.last_tune_state = cur_tune_state
             if cur_tune_state:
                 event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_TUNE_PRESSED)
-                g.event.publish(event_data)
+                q.heappush(self.switch_q, event_data)
             else:
                 event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_TUNE_RELEASED)
-                g.event.publish(event_data)
-        # PTT Switch
+                q.heappush(self.switch_q, event_data)
+        # PTT Switch handler
         if self.last_ptt_state != cur_ptt_state:
             self.last_ptt_state = cur_ptt_state
             if cur_ptt_state:
                 event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_PTT_PRESSED)
-                g.event.publish(event_data)
+                q.heappush(self.switch_q, event_data)
             else:
                 event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_PTT_RELEASED)
-                g.event.publish(event_data)
-        # Encoder Knob Switch
+                q.heappush(self.switch_q, event_data)
+        # Encoder Knob Switch handler
         if self.last_knob_state != cur_knob_state:
             self.last_knob_state = cur_knob_state
             if cur_knob_state:
                 self.knob_pressed_time = time.ticks_ms()
                 event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_KNOB_PRESSED)
-                g.event.publish(event_data)
+                q.heappush(self.switch_q, event_data)
             else:
                 # Determine if the knob was pressed for the long period and send the correct event subtype
                 if time.ticks_diff(time.ticks_ms, self.knob_pressed_time) >= c.KNOB_LONG_PRESS_TIME:
@@ -85,10 +97,10 @@ class SwitchPoll:
                 else:
                     ev_subtype = ev.EST_KNOB_RELEASED
                 event_data = ev.EventData(ev.ET_SWITCHES, ev_subtype)
-                g.event.publish(event_data)
+                q.heappush(self.switch_q, event_data)
         
         #
-        # Sequence the mute, ptt, and tune outputs
+        # Sequence the mute, ptt, and tune GPIO outputs using a state machine
         #
         
         now = time.ticks_ms()
@@ -124,7 +136,7 @@ class SwitchPoll:
                 pins.ctrl_mute_out(False)
                 new_state = SS_TIMED_OUT
                 event_data = ev.EventData(ev.ET_VFO, ev.EST_TX_TIMED_OUT_ENTRY)
-                g.event.publish(event_data)
+                q.heappush(self.switch_q, event_data)
         elif self.sequencer_state == SS_UNMUTE_WAIT: # Wait the unmute time
             if time.ticks_diff(now, self.sequencer_future_ticks) >= 0:
                 pins.ctrl_mute_out(False) # Unmute the audio
@@ -133,10 +145,22 @@ class SwitchPoll:
             if not (cur_ptt_state or cur_tune_state):
                 event_data = ev.EventData(ev.ET_VFO, ev.EST_TX_TIMED_OUT_EXIT)
                 new_state = SS_IDLE
-                g.event.publish(event_data)
+                q.heappush(self.switch_q, event_data)
                 
         self.sequencer_state = new_state # Set the new state for next time
-                
+    
+    # Check for queued switch events and return the event if it exists else None
+    # This gets called by the foreground loop. The forground loop will publish the
+    # event if one is returned from here.
+    
+    def queue_service(self):
+        try:
+            event_data = q.heappop(self.switch_q)
+        except IndexError:
+            return None
+        return event_data
+        
+        
                       
 #########################
 # Class instantiations  #
@@ -274,7 +298,7 @@ g.display.init()
 # Initialize the VFO
 #
 
-g.vfo.init({"40M":{"low_limit":7125000, "high_limit":7300000}})
+g.vfo.init(g.band_table, g.init_freq, c.TXM_LSB)
         
 
 #
@@ -295,9 +319,16 @@ while True:
     except IndexError:
         pass
     
+    # Check to see of there were any switch events
+    # That we need to publish
+    
+    event_data = switch_poller.queue_service()
+    if event_data is not None:
+        g.event.publish(event_data)
+    
     # garbage collect occasionally
     now = time.ticks_ms()
-    if time.ticks_diff(now, last_gc_time) > 30000:
+    if time.ticks_diff(now, last_gc_time) > c.GC_COLLECT_INTERVAL:
         last_gc_time = now
         gc.collect()
         print("Memory free: {}".format(gc.mem_free()))

@@ -17,7 +17,7 @@ class Vfo:
         # Diff freq must always be positive
         diff_freq = cf_freq - self.tuned_freq if cf_freq > self.tuned_freq else self.tuned_freq - cf_freq
         # Fconv is the conversion oscillator frequency
-        fconv = self.tuned_freq + cf_freq if mode == 1 else diff_freq
+        fconv = self.tuned_freq + cf_freq if mode == c.TXM_USB else diff_freq
         if tx == c.TXS_TX or tx == c.TXS_TUNE: # PTT or TUNE
             first_osc = cf_freq # First oscillator serves as balanced moduluator
             second_osc = fconv # Second oscillator serves as frequency converter
@@ -50,7 +50,7 @@ class Vfo:
             
 
     # Initialize the VFO 
-    def init(self, band_table, tuned_freq: int = 7200000, mode: int = 0):
+    def init(self, band_table, tuned_freq: int = 7200000, mode: int = c.TXM_LSB):
         self.band_table = band_table
         self.band = "40M"
         self.tuned_freq = tuned_freq

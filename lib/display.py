@@ -13,9 +13,9 @@ class _DisplayBase:
         return "{:2d}.{:06d}".format(MHz, kHz)
     
     def format_mode(self, mode: int) -> str:
-        if mode == 0:
+        if mode == c.TXM_LSB:
             m_str = "LSB"
-        elif mode == 1:
+        elif mode == c.TXM_USB:
             m_str = "USB"
         else:
             m_str = "???"

@@ -15,7 +15,8 @@ vfo = None # VFO subsystem
 # Global variables
 cal_data = None
 encoder_q = None # heapq for knob object
-
+band_table = {"40M":{"low_limit":7125000, "high_limit":7300000}}
+init_freq = 7200000
 
 # Default settings
 cal_file_dir = "config/cal_values.json"
