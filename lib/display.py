@@ -1,6 +1,7 @@
 import micropython
 import event as ev
 import lib.globals as g
+import lib.constants as c
 import lib.gpio_lcd as lcd
 
 class _DisplayBase:
@@ -12,16 +13,26 @@ class _DisplayBase:
         return "{:2d}.{:06d}".format(MHz, kHz)
     
     def format_mode(self, mode: int) -> str:
-        return "LSB" if mode == 0 else "USB"
+        if mode == 0:
+            m_str = "LSB"
+        elif mode == 1:
+            m_str = "USB"
+        else:
+            m_str = "???"
+        return m_str
     
     def format_tx_state(self, tx_state: int) -> str:
-        if tx_state == 0:
-            txstr = "RX"
-        elif tx_state == 1:
-            txstr = "TX"
+        if tx_state == c.TXS_RX:
+            tx_str = "RX"
+        elif tx_state == c.TXS_TX:
+            tx_str = "TX"
+        elif tx_state == c.TXS_TUNE:
+            tx_str = "TU"
+        elif tx_state == c.TXS_TIMEOUT:
+            tx_str = "TO"
         else:
-            txstr = "TU"
-        return txstr
+            tx_str = "??"
+        return tx_str
     
         
 class Display(_DisplayBase):

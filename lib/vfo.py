@@ -2,6 +2,7 @@ from machine import Pin
 import micropython
 import event as ev
 import lib.globals as g
+import lib.constants as c
 import lib.gpiopins as pins
 import lib.gpio_lcd as lcd
 import lib.si5351 as clkgen
@@ -17,10 +18,10 @@ class Vfo:
         diff_freq = cf_freq - self.tuned_freq if cf_freq > self.tuned_freq else self.tuned_freq - cf_freq
         # Fconv is the conversion oscillator frequency
         fconv = self.tuned_freq + cf_freq if mode == 1 else diff_freq
-        if tx:
+        if tx == c.TXS_TX or tx == c.TXS_TUNE: # PTT or TUNE
             first_osc = cf_freq # First oscillator serves as balanced moduluator
             second_osc = fconv # Second oscillator serves as frequency converter
-        else:
+        else: # RX or TX time out
             first_osc = fconv # First oscillator serves as frequency converter
             second_osc = cf_freq # Second oscillator serves as BFO
         
@@ -51,15 +52,17 @@ class Vfo:
     # Initialize the VFO 
     def init(self, band_table, tuned_freq: int = 7200000, mode: int = 0):
         self.band_table = band_table
+        self.band = "40M"
         self.tuned_freq = tuned_freq
         self.mode = -1
         self.txstate = -1
+        self.tuning_increment = 1000
         
         # Set up SI5351
         g.si5351.init(clkgen.CRYSTAL_LOAD_0PF, g.cal_data["xtal_freq_hz"], g.cal_data["si5351_correction_ppb"])
         
         # Tell the event handler we want to listen for switch and encoder events
-        g.event.add_subscriber(self.action, ev.ET_ENCODER | ev.ET_SWITCHES)
+        g.event.add_subscriber(self.action, ev.ET_ENCODER | ev.ET_SWITCHES | ev.ET_VFO)
         
         # Clock generator drive strength
         g.si5351.drive_strength(clkgen.CLK0, clkgen.DRIVE_8MA)
@@ -75,15 +78,54 @@ class Vfo:
         
         
         # Set up the clock generator output frequencies and enable the outputs
-        self._set_freq(self.tuned_freq, 0, mode)
+        self._set_freq(self.tuned_freq, c.TXS_RX, mode)
         
         
     # This is called when the encoder knob is turned, or any switch is pressed or released   
-    def action(self, event_obj: object):
+    def action(self, event_data: object):
         #print("Event Type: {} Subtype: {}".format(event_obj.type, event_obj.subtype))
-        pass
+        # Test for time out condition
+        new_event_data = None
+        if event_data.subtype == ev.EST_TX_TIMED_OUT_ENTRY:
+            if self.txstate != c.TXS_RX: # If not in RX
+                self.txstate = c.TXS_TIMEOUT # Put in time out state
+                self._set_freq(self.tuned_freq, self.txstate, self.mode)
+                new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+        # Test for ptt pressed
+        elif event_data.subtype == ev.EST_PTT_PRESSED:
+            self.txstate = c.TXS_TX # Put in tx state
+            self._set_freq(self.tuned_freq, self.txstate, self.mode)
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+        # Test for tune pressed
+        elif event_data.subtype == ev.EST_TUNE_PRESSED:
+            self.txstate = c.TXS_TUNE # Put in tune state
+            self._set_freq(self.tuned_freq, self.txstate, self.mode)
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+        # Test for tune or ptt released
+        elif event_data.subtype == ev.EST_PTT_RELEASED or event_data.subtype == ev.EST_TUNE_RELEASED:
+            self.txstate = c.TXS_RX # Put in rx state
+            self._set_freq(self.tuned_freq, self.txstate, self.mode)
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+        # Test for knob advance CW
+        elif event_data.subtype == ev.EST_KNOB_CW:
+            new_tuned_freq = self.tuned_freq + self.tuning_increment
+            if new_tuned_freq < self.band_table[self.band]["high_limit"]:
+                self.tuned_freq = new_tuned_freq
+                self._set_freq(self.tuned_freq, self.txstate, self.mode)
+        elif event_data.subtype == ev.EST_KNOB_CCW:
+            new_tuned_freq = self.tuned_freq - self.tuning_increment
+            if new_tuned_freq > self.band_table[self.band]["low_limit"]:
+                self.tuned_freq = new_tuned_freq
+                self._set_freq(self.tuned_freq, self.txstate, self.mode)
+        
+        if new_event_data:
+            g.event.publish(new_event_data)  
         
         
+
+
+                
+                       
         
        
     
