@@ -72,7 +72,7 @@ class Display(_DisplayBase):
         # of the initialization sequence.
         #
         super().init()
-        g.event.add_subscriber(self.action, ev.ET_DISPLAY)
+        g.event.add_subscriber(self.action, c.ET_DISPLAY)
         self.screens = dict()
         #
         # Create the "main" virtual screen which is the one used most of the time
@@ -137,26 +137,27 @@ class Display(_DisplayBase):
     def action(self, event_data):
         # Display events sent to this function
         # Frequency update
-        if event_data.subtype == ev.EST_DISPLAY_UPDATE_FREQ:
+        if event_data.subtype == c.EST_DISPLAY_UPDATE_FREQ:
             freq = event_data.data["freq"] # Save a local copy to restore later if need be
             self.virt_moveto_write(0, 0, self.format_freq(freq), "freq")
        
         # Mode update
-        elif event_data.subtype == ev.EST_DISPLAY_UPDATE_MODE:
+        elif event_data.subtype == c.EST_DISPLAY_UPDATE_MODE:
             mode = self.format_mode(event_data.data["mode"]) # Convert sideband to string and store locally
             self.virt_moveto_write(13, 0, mode, "mode")
         # TX State update
-        elif event_data.subtype == ev.EST_DISPLAY_UPDATE_TXSTATE: # Convert TX state to string
+        elif event_data.subtype == c.EST_DISPLAY_UPDATE_TXSTATE: # Convert TX state to string
             tx_state = self.format_tx_state(event_data.data["txstate"])
             self.virt_moveto_write(10, 0, tx_state, "txstate")
         # Tuning increment update
-        elif event_data.subtype == ev.EST_DISPLAY_UPDATE_TUNING_INCR:
+        elif event_data.subtype == c.EST_DISPLAY_UPDATE_TUNING_INCR:
             tuning_incr = self.format_tuning_incr(event_data.data["incr"])
             self.virt_moveto_write(13, 1, tuning_incr, "incr")
         # AGC update
-        elif event_data.subtype == ev.EST_DISPLAY_UPDATE_AGC:
+        elif event_data.subtype == c.EST_DISPLAY_UPDATE_AGC:
             agc_disable = self.format_agc_disable(event_data.data["agc"])
             self.virt_moveto_write(9, 1, agc_disable, "agc")
+            
         
         
         

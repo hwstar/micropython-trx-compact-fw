@@ -33,18 +33,18 @@ class Vfo:
         g.si5351.set_freq(clkgen.CLK2, second_osc * 100)
 
         # Update frequency on display
-        event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_FREQ, {"freq": freq})
+        event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_FREQ, {"freq": freq})
         g.event.publish(event_data)
         
         # Update TX state if it has changed
         if tx != self.txstate:
-            event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": tx})
+            event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": tx})
             self.txstate = tx
             g.event.publish(event_data)
         
         # Update mode if it has changed
         if mode != self.mode:
-            event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_MODE, {"mode": mode})
+            event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_MODE, {"mode": mode})
             self.mode = mode
             g.event.publish(event_data)
             
@@ -66,7 +66,7 @@ class Vfo:
         g.si5351.init(clkgen.CRYSTAL_LOAD_0PF, g.cal_data["xtal_freq_hz"], g.cal_data["si5351_correction_ppb"])
         
         # Tell the event handler we want to listen for switch and encoder events
-        g.event.add_subscriber(self.action, ev.ET_ENCODER | ev.ET_SWITCHES | ev.ET_VFO)
+        g.event.add_subscriber(self.action, c.ET_ENCODER | c.ET_SWITCHES | c.ET_VFO)
         
         # Clock generator drive strength
         g.si5351.drive_strength(clkgen.CLK0, clkgen.DRIVE_8MA)
@@ -85,11 +85,11 @@ class Vfo:
         self._set_freq(self.tuned_freq, c.TXS_RX, mode)
         
         # Set the default tuning increment
-        event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
+        event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
         g.event.publish(event_data)
         
         # Set the default agc state
-        event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC, {"agc": not self.agc_disable})
+        event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_AGC, {"agc": not self.agc_disable})
         g.event.publish(event_data)
         
         
@@ -98,65 +98,65 @@ class Vfo:
         #print("Event Type: {} Subtype: {}".format(event_obj.type, event_obj.subtype))
         # Test for time out condition
         new_event_data = None
-        if event_data.subtype == ev.EST_TX_TIMED_OUT_ENTRY:
+        if event_data.subtype == c.EST_TX_TIMED_OUT_ENTRY:
             if self.txstate != c.TXS_RX: # If not in RX
                 self.txstate = c.TXS_TIMEOUT # Put in time out state
                 self._set_freq(self.tuned_freq, self.txstate, self.mode)
-                new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+                new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
         # Test for ptt pressed
-        elif event_data.subtype == ev.EST_PTT_PRESSED:
+        elif event_data.subtype == c.EST_PTT_PRESSED:
             self.txstate = c.TXS_TX # Put in tx state
             self._set_freq(self.tuned_freq, self.txstate, self.mode)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+            new_event_data = c.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
         # Test for tune pressed
-        elif event_data.subtype == ev.EST_TUNE_PRESSED:
+        elif event_data.subtype == c.EST_TUNE_PRESSED:
             self.txstate = c.TXS_TUNE # Put in tune state
             self._set_freq(self.tuned_freq, self.txstate, self.mode)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
         # Test for tune or ptt released
-        elif event_data.subtype == ev.EST_PTT_RELEASED or event_data.subtype == ev.EST_TUNE_RELEASED:
+        elif event_data.subtype == c.EST_PTT_RELEASED or event_data.subtype == c.EST_TUNE_RELEASED:
             self.txstate = c.TXS_RX # Put in rx state
             self._set_freq(self.tuned_freq, self.txstate, self.mode)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
         # Test for knob advance CW
-        elif event_data.subtype == ev.EST_KNOB_CW:
+        elif event_data.subtype == c.EST_KNOB_CW:
             new_tuned_freq = self.tuned_freq + g.tuning_increment_table[self.tuning_increment_index]
             if new_tuned_freq < self.band_table[self.band]["high_limit"]:
                 self.tuned_freq = new_tuned_freq
                 self._set_freq(self.tuned_freq, self.txstate, self.mode)
         # Test for knob advance CCW        
-        elif event_data.subtype == ev.EST_KNOB_CCW:
+        elif event_data.subtype == c.EST_KNOB_CCW:
             new_tuned_freq = self.tuned_freq - g.tuning_increment_table[self.tuning_increment_index]
             if new_tuned_freq > self.band_table[self.band]["low_limit"]:
                 self.tuned_freq = new_tuned_freq
                 self._set_freq(self.tuned_freq, self.txstate, self.mode)
         # Test for knob short press
-        elif event_data.subtype == ev.EST_KNOB_RELEASED:
+        elif event_data.subtype == c.EST_KNOB_RELEASED:
             self.tuning_increment_index += 1
             if self.tuning_increment_index >= len(g.tuning_increment_table):
                 self.tuning_increment_index = 0
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
         # Test for AGC disable message
-        elif event_data.subtype == ev.EST_VFO_AGC_DISABLE:
+        elif event_data.subtype == c.EST_VFO_AGC_DISABLE:
             self._agc_disable(True)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC,{"agc": 0})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_AGC,{"agc": 0})
                                           
         # Test for AGC enable message
-        elif event_data.subtype == ev.EST_VFO_AGC_ENABLE:
+        elif event_data.subtype == c.EST_VFO_AGC_ENABLE:
             self._agc_disable(False)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC,{"agc": 1})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_AGC,{"agc": 1})
             
         # Test for mode LSB message
-        elif event_data.subtype == ev.EST_VFO_MODE_LSB:
+        elif event_data.subtype == c.EST_VFO_MODE_LSB:
             self.mode = c.TXM_LSB
             self._set_freq(self.tuned_freq, self.txstate, self.mode)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_MODE,{"mode": 1})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_MODE,{"mode": 1})
                                           
         # Test for mode USB message
-        elif event_data.subtype == ev.EST_VFO_MODE_USB:
+        elif event_data.subtype == c.EST_VFO_MODE_USB:
             self.mode = c.TXM_USB
             self._set_freq(self.tuned_freq, self.txstate, self.mode)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_MODE,{"mode": 0})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_MODE,{"mode": 0})
             
         if new_event_data:
             g.event.publish(new_event_data)  

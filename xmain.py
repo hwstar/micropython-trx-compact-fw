@@ -70,34 +70,34 @@ class SwitchPoll:
         if self.last_tune_state != cur_tune_state:
             self.last_tune_state = cur_tune_state
             if cur_tune_state:
-                event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_TUNE_PRESSED)
+                event_data = ev.EventData(c.ET_SWITCHES, c.EST_TUNE_PRESSED)
                 q.heappush(self.switch_q, event_data)
             else:
-                event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_TUNE_RELEASED)
+                event_data = ev.EventData(c.ET_SWITCHES, c.EST_TUNE_RELEASED)
                 q.heappush(self.switch_q, event_data)
         # PTT Switch handler
         if self.last_ptt_state != cur_ptt_state:
             self.last_ptt_state = cur_ptt_state
             if cur_ptt_state:
-                event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_PTT_PRESSED)
+                event_data = ev.EventData(c.ET_SWITCHES, c.EST_PTT_PRESSED)
                 q.heappush(self.switch_q, event_data)
             else:
-                event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_PTT_RELEASED)
+                event_data = ev.EventData(c.ET_SWITCHES, c.EST_PTT_RELEASED)
                 q.heappush(self.switch_q, event_data)
         # Encoder Knob Switch handler
         if self.last_knob_state != cur_knob_state:
             self.last_knob_state = cur_knob_state
             if cur_knob_state:
                 self.knob_pressed_time = time.ticks_ms()
-                event_data = ev.EventData(ev.ET_SWITCHES, ev.EST_KNOB_PRESSED)
+                event_data = ev.EventData(c.ET_SWITCHES, c.EST_KNOB_PRESSED)
                 q.heappush(self.switch_q, event_data)
             else:
                 # Determine if the knob was pressed for the long period and send the correct event subtype
                 if time.ticks_diff(time.ticks_ms(), self.knob_pressed_time) >= c.KNOB_LONG_PRESS_TIME:
-                    ev_subtype = ev.EST_KNOB_RELEASED_LONG
+                    ev_subtype = c.EST_KNOB_RELEASED_LONG
                 else:
-                    ev_subtype = ev.EST_KNOB_RELEASED
-                event_data = ev.EventData(ev.ET_SWITCHES, ev_subtype)
+                    ev_subtype = c.EST_KNOB_RELEASED
+                event_data = ev.EventData(c.ET_SWITCHES, ev_subtype)
                 q.heappush(self.switch_q, event_data)
         
         #
@@ -136,7 +136,7 @@ class SwitchPoll:
                 pins.ctrl_tune_out(False)
                 pins.ctrl_mute_out(False)
                 new_state = SS_TIMED_OUT
-                event_data = ev.EventData(ev.ET_VFO, ev.EST_TX_TIMED_OUT_ENTRY)
+                event_data = ev.EventData(c.ET_VFO, c.EST_TX_TIMED_OUT_ENTRY)
                 q.heappush(self.switch_q, event_data)
         elif self.sequencer_state == SS_UNMUTE_WAIT: # Wait the unmute time
             if time.ticks_diff(now, self.sequencer_future_ticks) >= 0:
@@ -144,7 +144,7 @@ class SwitchPoll:
                 new_state = SS_IDLE
         elif self.sequencer_state == SS_TIMED_OUT: # Timed out, wait in this state until the user unkeys
             if not (cur_ptt_state or cur_tune_state):
-                event_data = ev.EventData(ev.ET_VFO, ev.EST_TX_TIMED_OUT_EXIT)
+                event_data = ev.EventData(c.ET_VFO, c.EST_TX_TIMED_OUT_EXIT)
                 new_state = SS_IDLE
                 q.heappush(self.switch_q, event_data)
                 
@@ -325,12 +325,12 @@ while True:
         direction = g.encoder_q.pop()
         if direction < 0:
             # Divert to menu system if it is active
-            subtype = ev.EST_KNOB_MENU_CCW if g.menu.active() else ev.EST_KNOB_CCW
-            event_data = ev.EventData(ev.ET_ENCODER, subtype)
+            subtype = c.EST_KNOB_MENU_CCW if g.menu.active() else c.EST_KNOB_CCW
+            event_data = ev.EventData(c.ET_ENCODER, subtype)
         else:
             # Divert to menu system if it is active
-            subtype = ev.EST_KNOB_MENU_CW if g.menu.active() else ev.EST_KNOB_CW
-            event_data = ev.EventData(ev.ET_ENCODER, subtype)
+            subtype = c.EST_KNOB_MENU_CW if g.menu.active() else c.EST_KNOB_CW
+            event_data = ev.EventData(c.ET_ENCODER, subtype)
         g.event.publish(event_data)
                 
     except IndexError:
