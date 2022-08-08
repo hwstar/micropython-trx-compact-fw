@@ -88,6 +88,10 @@ class Vfo:
         event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
         g.event.publish(event_data)
         
+        # Set the default agc state
+        event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC, {"agc": not self.agc_disable})
+        g.event.publish(event_data)
+        
         
     # This is called when the encoder knob is turned, or any switch is pressed or released   
     def action(self, event_data: object):
@@ -135,12 +139,12 @@ class Vfo:
         # Test for AGC disable message
         elif event_data.subtype == ev.EST_VFO_AGC_DISABLE:
             self._agc_disable(True)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC_DISABLE,{"agcd": 1})
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC,{"agc": 0})
                                           
         # Test for AGC enable message
         elif event_data.subtype == ev.EST_VFO_AGC_ENABLE:
             self._agc_disable(False)
-            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC_DISABLE,{"agcd": 0})
+            new_event_data = ev.EventData(ev.ET_DISPLAY, ev.EST_DISPLAY_UPDATE_AGC,{"agc": 1})
             
         # Test for mode LSB message
         elif event_data.subtype == ev.EST_VFO_MODE_LSB:
