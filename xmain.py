@@ -2,6 +2,7 @@ from machine import I2C,Pin,Timer
 import micropython
 import gc
 import time
+import sys
 from lib.configrw import ConfigRw
 import event as ev
 import uheapq as q
@@ -161,200 +162,221 @@ class SwitchPoll:
             return None
         return event_data
         
-        
-                      
-#########################
-# Class instantiations  #
-#########################   
 
-g.configrw = ConfigRw()
-switch_poller = SwitchPoll()
-g.event = ev.Event()
-g.vfo = vfo.Vfo()
-g.display = display.Display()
-g.menu = menu.Menu()
+def init():
+                   
+    #########################
+    # Class instantiations  #
+    #########################   
 
-
-##############################
-# Emergency exception buffer #
-##############################   
-
-micropython.alloc_emergency_exception_buf(100)
+    g.configrw = ConfigRw()
+    g.switch_poller = SwitchPoll()
+    g.event = ev.Event()
+    g.vfo = vfo.Vfo()
+    g.display = display.Display()
+    g.menu = menu.Menu()
 
 
-######################
-# Pin initialization #
-######################
+    ##############################
+    # Emergency exception buffer #
+    ##############################   
+
+    micropython.alloc_emergency_exception_buf(100)
 
 
-#
-# I2C pins
-#
-
-pins.i2c_scl = Pin(13)
-pins.i2c_sda = Pin(12)
-
-#
-# Define the Encoder pins
-#
-
-pins.encoder_i = Pin(14)
-pins.encoder_q = Pin(15)
+    ######################
+    # Pin initialization #
+    ######################
 
 
-#
-# Define the LCD Display Pins
-#
+    #
+    # I2C pins
+    #
 
-pins.lcd_rs = Pin(16,Pin.OUT)
-pins.lcd_e = Pin(17,Pin.OUT)
-pins.lcd_d4 = Pin(18,Pin.OUT)
-pins.lcd_d5 = Pin(19,Pin.OUT)
-pins.lcd_d6 = Pin(20,Pin.OUT)
-pins.lcd_d7 = Pin(21,Pin.OUT)
-pins.lcd_backlight = Pin(22, Pin.OUT)
+    pins.i2c_scl = Pin(13)
+    pins.i2c_sda = Pin(12)
 
-# Define the Control Signal Pins
-pins.ctrl_button_ptt = Pin(2,Pin.IN, Pin.PULL_UP)
-pins.ctrl_button_tune = Pin(3, Pin.IN, Pin.PULL_UP)
-pins.ctrl_ptt_out = Pin(4, Pin.OUT)
-pins.ctrl_tune_out = Pin(5, Pin.OUT)
-pins.ctrl_mute_out = Pin(6, Pin.OUT)
-pins.ctrl_agc_disable = Pin(7, Pin.OUT)
-pins.ctrl_button_knob = Pin(8,Pin.IN, Pin.PULL_UP)
-pins.ctrl_led = Pin(25, Pin.OUT)
+    #
+    # Define the Encoder pins
+    #
 
-#
-# Read in the calibration constants
-#
+    pins.encoder_i = Pin(14)
+    pins.encoder_q = Pin(15)
 
 
-g.cal_data = g.configrw.read(g.cal_file_path, g.cal_defaults)
+    #
+    # Define the LCD Display Pins
+    #
 
-#
-# Read in the band table
-#
+    pins.lcd_rs = Pin(16,Pin.OUT)
+    pins.lcd_e = Pin(17,Pin.OUT)
+    pins.lcd_d4 = Pin(18,Pin.OUT)
+    pins.lcd_d5 = Pin(19,Pin.OUT)
+    pins.lcd_d6 = Pin(20,Pin.OUT)
+    pins.lcd_d7 = Pin(21,Pin.OUT)
+    pins.lcd_backlight = Pin(22, Pin.OUT)
 
-g.band_table = g.configrw.read(g.band_table_path, g.band_table_default, False)
+    # Define the Control Signal Pins
+    pins.ctrl_button_ptt = Pin(2,Pin.IN, Pin.PULL_UP)
+    pins.ctrl_button_tune = Pin(3, Pin.IN, Pin.PULL_UP)
+    pins.ctrl_ptt_out = Pin(4, Pin.OUT)
+    pins.ctrl_tune_out = Pin(5, Pin.OUT)
+    pins.ctrl_mute_out = Pin(6, Pin.OUT)
+    pins.ctrl_agc_disable = Pin(7, Pin.OUT)
+    pins.ctrl_button_knob = Pin(8,Pin.IN, Pin.PULL_UP)
+    pins.ctrl_led = Pin(25, Pin.OUT)
 
-#
-# Set default output state for control pins
-#
-
-pins.ctrl_led(0) # LED off\
-pins.ctrl_ptt_out(0) # PTT OFF
-pins.ctrl_tune_out(0) # Tune off
-pins.ctrl_mute_out(0) # Mute off
-pins.ctrl_agc_disable(0) # AGC on
+    #
+    # Read in the calibration constants
+    #
 
 
-#
-# Initialize I2C
-#
+    g.cal_data = g.configrw.read(g.cal_file_path, g.cal_defaults)
 
-g.i2c = I2C(0, freq=100000, scl = pins.i2c_scl, sda = pins.i2c_sda)
+    #
+    # Read in the band table
+    #
 
-#
-# Create si5351 object
-#
+    g.band_table = g.configrw.read(g.band_table_path, g.band_table_default, False)
 
-g.si5351 = clkgen.SI5351(g.i2c)
+    #
+    # Set default output state for control pins
+    #
 
-#
-# Initialize the LCD driver
-#
+    pins.ctrl_led(0) # LED off\
+    pins.ctrl_ptt_out(0) # PTT OFF
+    pins.ctrl_tune_out(0) # Tune off
+    pins.ctrl_mute_out(0) # Mute off
+    pins.ctrl_agc_disable(0) # AGC on
 
-g.lcd = lcd.GpioLcd(pins.lcd_rs, pins.lcd_e, d4_pin = pins.lcd_d4,
-                    d5_pin = pins.lcd_d5, d6_pin = pins.lcd_d6,
-                    d7_pin = pins.lcd_d7, backlight_pin = pins.lcd_backlight)
 
-gc.collect()
+    #
+    # Initialize I2C
+    #
 
-#
-# Safe mode check
-#
-# If the user holds down the tune button at power on
-# this code will prevent further execution. This will
-# prevent system lock up if something is wrong in the code
-# that prevents Thonny from gaining control
-#
+    g.i2c = I2C(0, freq=100000, scl = pins.i2c_scl, sda = pins.i2c_sda)
 
-if pins.ctrl_button_tune() == 0:
-    g.lcd.move_to(0,0)
-    g.lcd.putstr("** SAFE MODE **")
+    #
+    # Create si5351 object
+    #
+
+    g.si5351 = clkgen.SI5351(g.i2c)
+
+    #
+    # Initialize the LCD driver
+    #
+
+    g.lcd = lcd.GpioLcd(pins.lcd_rs, pins.lcd_e, d4_pin = pins.lcd_d4,
+                        d5_pin = pins.lcd_d5, d6_pin = pins.lcd_d6,
+                        d7_pin = pins.lcd_d7, backlight_pin = pins.lcd_backlight)
+
+    gc.collect()
+
+    #
+    # Safe mode check
+    #
+    # If the user holds down the tune button at power on
+    # this code will prevent further execution. This will
+    # prevent system lock up if something is wrong in the code
+    # that prevents Thonny from gaining control
+    #
+
+    if pins.ctrl_button_tune() == 0:
+        g.lcd.move_to(0,0)
+        g.lcd.putstr("** SAFE MODE **")
+        while True:
+            pass
+
+    #
+    # Initialize switch polling class
+
+    #
+
+    g.switch_poller.init()
+    gc.collect()
+
+    #
+    # Initialize the encoder knob
+    #
+    g.encoder_q = list()
+    g.knob = knob.EncoderKnob(0, g.encoder_q, pins.encoder_i)
+
+
+    #
+    # Initialize the display
+    #
+    g.display.init()
+    gc.collect()
+
+    #
+    # Initialize the VFO
+    #
+
+    g.vfo.init(g.band_table, g.init_freq, c.TXM_LSB)
+
+    #
+    # Initialize the menu system
+    #
+
+    g.menu.init()
+
+
+
+def run():
+    last_gc_time = time.ticks_ms()
+    gc.collect()
+    print("Memory free: {}".format(gc.mem_free()))
     while True:
-        pass
+        # Service encoder knob queue
+        try:
+            direction = g.encoder_q.pop()
+            if direction < 0:
+                # Divert to menu system if it is active
+                subtype = c.EST_KNOB_MENU_CCW if g.menu.active() else c.EST_KNOB_CCW
+                event_data = ev.EventData(c.ET_ENCODER, subtype)
+            else:
+                # Divert to menu system if it is active
+                subtype = c.EST_KNOB_MENU_CW if g.menu.active() else c.EST_KNOB_CW
+                event_data = ev.EventData(c.ET_ENCODER, subtype)
+            g.event.publish(event_data)
+                    
+        except IndexError:
+            pass
+        
+        # Check to see of there were any switch events
+        # That we need to publish
+        
+        event_data = g.switch_poller.queue_service()
+        if event_data is not None:
+            g.event.publish(event_data)
+        
+        # garbage collect occasionally
+        now = time.ticks_ms()
+        if time.ticks_diff(now, last_gc_time) > c.GC_COLLECT_INTERVAL:
+            last_gc_time = now
+            gc.collect()
+            print("Memory free: {}".format(gc.mem_free()))    
 
 #
-# Initialize switch polling class
-
+# Initialize everything
 #
 
-switch_poller.init()
-gc.collect()
+init()
 
 #
-# Initialize the encoder knob
-#
-g.encoder_q = list()
-g.knob = knob.EncoderKnob(0, g.encoder_q, pins.encoder_i)
-
-
-#
-# Initialize the display
-#
-g.display.init()
-gc.collect()
-
-#
-# Initialize the VFO
+# Run, but catch any errors and write them to a file
 #
 
-g.vfo.init(g.band_table, g.init_freq, c.TXM_LSB)
-
-#
-# Initialize the menu system
-#
-
-g.menu.init()
-
-#
-# Main loop
-#
-
-last_gc_time = time.ticks_ms()
-gc.collect()
-print("Memory free: {}".format(gc.mem_free()))
-while True:
-    # Service encoder knob queue
-    try:
-        direction = g.encoder_q.pop()
-        if direction < 0:
-            # Divert to menu system if it is active
-            subtype = c.EST_KNOB_MENU_CCW if g.menu.active() else c.EST_KNOB_CCW
-            event_data = ev.EventData(c.ET_ENCODER, subtype)
-        else:
-            # Divert to menu system if it is active
-            subtype = c.EST_KNOB_MENU_CW if g.menu.active() else c.EST_KNOB_CW
-            event_data = ev.EventData(c.ET_ENCODER, subtype)
-        g.event.publish(event_data)
-                
-    except IndexError:
-        pass
+try:
+    run()
+except Exception as e:
+    ed = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_FATAL_ERROR)
+    g.event.publish(ed)
+    with open(g.error_log_path, "w") as f:
+        # Write to error log
+        sys.print_exception(e, f)
+        raise
     
-    # Check to see of there were any switch events
-    # That we need to publish
-    
-    event_data = switch_poller.queue_service()
-    if event_data is not None:
-        g.event.publish(event_data)
-    
-    # garbage collect occasionally
-    now = time.ticks_ms()
-    if time.ticks_diff(now, last_gc_time) > c.GC_COLLECT_INTERVAL:
-        last_gc_time = now
-        gc.collect()
-        print("Memory free: {}".format(gc.mem_free()))
     
     
     

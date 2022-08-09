@@ -5,12 +5,17 @@ import ujson
 class ConfigRw:
         
     def write(self, path: str, config: dict):
-            init_str = ujson.dumps(config)
-            with open(path, "w") as f:
-                f.write(init_str)
+        # Write a a configuration dictionary to a file. 
+        init_str = ujson.dumps(config)
+        with open(path, "w") as f:
+            f.write(init_str)
                 
         
     def read(self, path: str, default_init: dict, update: bool = True) -> dict:
+        # Read a .json file into a config dictionary.
+        # For single level flat dictionaries the update flag can be set, and the json file on the disk
+        # will be updated with any new fields and defaults.
+        # The update flag with not work with multilevel dictionaries.
         try:
             # File exists test
             res = os.stat(path)

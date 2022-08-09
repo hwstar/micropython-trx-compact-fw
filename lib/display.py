@@ -83,10 +83,11 @@ class Display(_DisplayBase):
         g.event.add_subscriber(self.action, c.ET_DISPLAY)
         self.screens = dict()
         #
-        # Create the "menu" and "main" virtual screens. 
+        # Create the "menu", "main", and "fatal" virtual screens. 
         #
         self.current_screen = "main"
         self.virt_new_screen("menu")
+        self.virt_new_screen("fatal")
         self.virt_new_screen(self.current_screen)
         
         #
@@ -197,6 +198,12 @@ class Display(_DisplayBase):
             me_str = me_format.format(self.menutext[mli][1][mei])
             self.virt_moveto_write(0, 0, ml_str, "group", "menu")
             self.virt_moveto_write(0, 1, me_str, "entry", "menu")
+        # Fatal error
+        elif event_data.subtype == c.EST_DISPLAY_FATAL_ERROR:
+            self.virt_moveto_write(0, 0, "**FATAL ERROR**"," fe1", "fatal")
+            self.virt_moveto_write(0, 1, "Check log file","fe2",  "fatal")
+            self.virt_switch_screens("fatal")
+        
             
             
             
