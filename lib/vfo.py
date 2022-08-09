@@ -48,7 +48,7 @@ class Vfo:
             self.mode = mode
             g.event.publish(event_data)
             
-    def _set_agc_disable(disable = False):
+    def _set_agc_disable(self, disable = False):
         pins.ctrl_agc_disable(disable)
 
 
@@ -138,25 +138,25 @@ class Vfo:
             new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TUNING_INCR, {"incr":g.tuning_increment_table[self.tuning_increment_index]})
         # Test for AGC disable message
         elif event_data.subtype == c.EST_VFO_AGC_DISABLE:
-            self._agc_disable(True)
+            self._set_agc_disable(True)
             new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_AGC,{"agc": 0})
                                           
         # Test for AGC enable message
         elif event_data.subtype == c.EST_VFO_AGC_ENABLE:
-            self._agc_disable(False)
+            self._set_agc_disable(False)
             new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_AGC,{"agc": 1})
             
         # Test for mode LSB message
         elif event_data.subtype == c.EST_VFO_MODE_LSB:
             self.mode = c.TXM_LSB
             self._set_freq(self.tuned_freq, self.txstate, self.mode)
-            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_MODE,{"mode": 1})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_MODE,{"mode": 0})
                                           
         # Test for mode USB message
         elif event_data.subtype == c.EST_VFO_MODE_USB:
             self.mode = c.TXM_USB
             self._set_freq(self.tuned_freq, self.txstate, self.mode)
-            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_MODE,{"mode": 0})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_MODE,{"mode": 1})
             
         if new_event_data:
             g.event.publish(new_event_data)  

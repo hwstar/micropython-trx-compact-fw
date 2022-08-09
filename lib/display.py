@@ -96,8 +96,8 @@ class Display(_DisplayBase):
         #
         self.menutext = [
             ["**Main Menu**",["USB/LSB", "AGC ON/OFF"]], # Group 0
-            ["**LSB/USB**",["LSB", "USB"]], # Group 1
-            ["**AGC**",["ON", "OFF"]] # Group 2
+            ["**LSB/USB**",["LSB", "USB","^BACK"]], # Group 1
+            ["**AGC**",["ON", "OFF", "^BACK"]] # Group 2
             ]
         
         

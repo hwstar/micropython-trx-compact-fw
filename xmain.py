@@ -268,6 +268,8 @@ g.lcd = lcd.GpioLcd(pins.lcd_rs, pins.lcd_e, d4_pin = pins.lcd_d4,
                     d5_pin = pins.lcd_d5, d6_pin = pins.lcd_d6,
                     d7_pin = pins.lcd_d7, backlight_pin = pins.lcd_backlight)
 
+gc.collect()
+
 #
 # Safe mode check
 #
@@ -289,6 +291,7 @@ if pins.ctrl_button_tune() == 0:
 #
 
 switch_poller.init()
+gc.collect()
 
 #
 # Initialize the encoder knob
@@ -301,6 +304,7 @@ g.knob = knob.EncoderKnob(0, g.encoder_q, pins.encoder_i)
 # Initialize the display
 #
 g.display.init()
+gc.collect()
 
 #
 # Initialize the VFO
@@ -319,6 +323,8 @@ g.menu.init()
 #
 
 last_gc_time = time.ticks_ms()
+gc.collect()
+print("Memory free: {}".format(gc.mem_free()))
 while True:
     # Service encoder knob queue
     try:
