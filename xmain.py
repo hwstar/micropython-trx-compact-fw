@@ -3,6 +3,7 @@ import micropython
 import gc
 import time
 import sys
+import os
 from lib.configrw import ConfigRw
 import event as ev
 import uheapq as q
@@ -226,18 +227,49 @@ def init():
     pins.ctrl_button_knob = Pin(8,Pin.IN, Pin.PULL_UP)
     pins.ctrl_led = Pin(25, Pin.OUT)
 
+    # Test for the presence of the config directory and make it if it doesn't exist
+    # A new install will not have this directory
+    
+    makedir = False
+    try:
+        stat_info = os.stat("config")
+        if not stat_info[0] & 0x4000: # constant value taken from micropython/blob/master/extmod/vfs_fat.c
+            # There is a file named config, remove it
+            os.remove("config")
+            makedir = True
+    except OSError as e:
+        makedir = True
+        
+    if makedir:
+        print("Creating config directory")
+        os.mkdir("config")
+        
+        
+           
+    
+
+
     #
     # Read in the calibration constants
     #
 
 
-    g.cal_data = g.configrw.read(g.cal_file_path, g.cal_defaults)
+    g.cal_data = g.configrw.read(g.cal_file_path, g.cal_defaults, True, True)
 
     #
     # Read in the band table
     #
 
-    g.band_table = g.configrw.read(g.band_table_path, g.band_table_default, False)
+    g.band_table = g.configrw.read(g.band_table_path, g.band_table_default, True, False)
+    
+    #
+    # Read in user configuration settings
+    #
+    
+    g.user_config_settings = g.configrw.read(g.user_config_settings_path, g.user_config_settings_default, True, True)
+    
+    
+
 
     #
     # Set default output state for control pins
@@ -312,7 +344,7 @@ def init():
     # Initialize the VFO
     #
 
-    g.vfo.init(g.band_table, g.init_freq, c.TXM_LSB)
+    g.vfo.init(g.band_table, g.user_config_settings["initial_freq"], c.TXM_LSB)
 
     #
     # Initialize the menu system
