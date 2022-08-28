@@ -107,7 +107,7 @@ class Vfo:
         elif event_data.subtype == c.EST_PTT_PRESSED:
             self.txstate = c.TXS_TX # Put in tx state
             self._set_freq(self.tuned_freq, self.txstate, self.mode)
-            new_event_data = c.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
+            new_event_data = ev.EventData(c.ET_DISPLAY, c.EST_DISPLAY_UPDATE_TXSTATE, {"txstate": self.txstate})
         # Test for tune pressed
         elif event_data.subtype == c.EST_TUNE_PRESSED:
             self.txstate = c.TXS_TUNE # Put in tune state

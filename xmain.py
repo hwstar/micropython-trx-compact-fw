@@ -6,7 +6,6 @@ import sys
 import os
 from lib.configrw import ConfigRw
 import event as ev
-import uheapq as q
 import lib.globals as g
 import lib.constants as c
 import lib.gpiopins as pins
@@ -65,34 +64,34 @@ class SwitchPoll:
     
     def _switch_service(self, dummy):
         # Sample the inputs
-        cur_ptt_state = not pins.ctrl_button_ptt()
-        cur_tune_state = not pins.ctrl_button_tune()
-        cur_knob_state = not pins.ctrl_button_knob()
+        cur_ptt_state = pins.ctrl_button_ptt()
+        cur_tune_state = pins.ctrl_button_tune()
+        cur_knob_state = pins.ctrl_button_knob()
         # TUNE switch handler
         if self.last_tune_state != cur_tune_state:
             self.last_tune_state = cur_tune_state
             if cur_tune_state:
                 event_data = ev.EventData(c.ET_SWITCHES, c.EST_TUNE_PRESSED)
-                q.heappush(self.switch_q, event_data)
+                self.switch_q.append(event_data)
             else:
                 event_data = ev.EventData(c.ET_SWITCHES, c.EST_TUNE_RELEASED)
-                q.heappush(self.switch_q, event_data)
+                self.switch_q.append(event_data)
         # PTT Switch handler
         if self.last_ptt_state != cur_ptt_state:
             self.last_ptt_state = cur_ptt_state
             if cur_ptt_state:
                 event_data = ev.EventData(c.ET_SWITCHES, c.EST_PTT_PRESSED)
-                q.heappush(self.switch_q, event_data)
+                self.switch_q.append(event_data)
             else:
                 event_data = ev.EventData(c.ET_SWITCHES, c.EST_PTT_RELEASED)
-                q.heappush(self.switch_q, event_data)
+                self.switch_q.append(event_data)
         # Encoder Knob Switch handler
         if self.last_knob_state != cur_knob_state:
             self.last_knob_state = cur_knob_state
             if cur_knob_state:
                 self.knob_pressed_time = time.ticks_ms()
                 event_data = ev.EventData(c.ET_SWITCHES, c.EST_KNOB_PRESSED)
-                q.heappush(self.switch_q, event_data)
+                self.switch_q.append(event_data)
             else:
                 # Determine if the knob was pressed for the long period and send the correct event subtype
                 if time.ticks_diff(time.ticks_ms(), self.knob_pressed_time) >= c.KNOB_LONG_PRESS_TIME:
@@ -100,7 +99,7 @@ class SwitchPoll:
                 else:
                     ev_subtype = c.EST_KNOB_RELEASED
                 event_data = ev.EventData(c.ET_SWITCHES, ev_subtype)
-                q.heappush(self.switch_q, event_data)
+                self.switch_q.append(event_data)
         
         #
         # Sequence the mute, ptt, and tune GPIO outputs using a state machine
@@ -139,7 +138,7 @@ class SwitchPoll:
                 pins.ctrl_mute_out(False)
                 new_state = SS_TIMED_OUT
                 event_data = ev.EventData(c.ET_VFO, c.EST_TX_TIMED_OUT_ENTRY)
-                q.heappush(self.switch_q, event_data)
+                self.switch_q.append(event_data)
         elif self.sequencer_state == SS_UNMUTE_WAIT: # Wait the unmute time
             if time.ticks_diff(now, self.sequencer_future_ticks) >= 0:
                 pins.ctrl_mute_out(False) # Unmute the audio
@@ -148,7 +147,7 @@ class SwitchPoll:
             if not (cur_ptt_state or cur_tune_state):
                 event_data = ev.EventData(c.ET_VFO, c.EST_TX_TIMED_OUT_EXIT)
                 new_state = SS_IDLE
-                q.heappush(self.switch_q, event_data)
+                self.switch_q.append(event_data)
                 
         self.sequencer_state = new_state # Set the new state for next time
     
@@ -158,7 +157,8 @@ class SwitchPoll:
     
     def queue_service(self):
         try:
-            event_data = q.heappop(self.switch_q)
+            event_data = self.switch_q.pop(0)
+            
         except IndexError:
             return None
         return event_data
@@ -313,7 +313,7 @@ def init():
     # that prevents Thonny from gaining control
     #
 
-    if pins.ctrl_button_tune() == 0:
+    if pins.ctrl_button_tune() == 1:
         g.lcd.move_to(0,0)
         g.lcd.putstr("** SAFE MODE **")
         while True:
